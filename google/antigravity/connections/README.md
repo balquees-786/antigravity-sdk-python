@@ -36,6 +36,7 @@ Key methods:
     - Handles tool calls by executing them via `ToolRunner` and sending results back.
     - Handles question requests from the harness and dispatches them via `HookRunner` (interaction hooks).
     - Dispatches session start/end and turn hooks.
+    - Supports loading skills from specified paths via `skills_paths`.
 
 ## Usage Example
 
@@ -46,6 +47,7 @@ from google.antigravity.types import GeminiConfig
 strategy = LocalConnectionStrategy(
     binary_path="/path/to/localharness",
     gemini_config=GeminiConfig(api_key="..."),
+    skills_paths=["/path/to/skills"],
 )
 
 async with strategy as connection:

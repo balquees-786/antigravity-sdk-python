@@ -60,6 +60,7 @@ class AgentConfig(pydantic.BaseModel):
     workspaces: Directory paths to restrict the agent to.
     response_schema: Optional Pydantic model or JSON schema dict for structured
       output.
+    skills_paths: List of paths to skills to load.
     model: Sugar — sets gemini_config.models.default.
     api_key: Sugar — sets gemini_config.api_key.
   """
@@ -82,6 +83,7 @@ class AgentConfig(pydantic.BaseModel):
   mcp_servers: list[dict[str, Any]] = pydantic.Field(default_factory=list)
   workspaces: list[str] = pydantic.Field(default_factory=list)
   response_schema: dict[str, Any] | type[pydantic.BaseModel] | str | None = None
+  skills_paths: list[str] = pydantic.Field(default_factory=list)
 
   # Top-level sugar — flows into gemini_config.
   model: str | None = None
@@ -251,6 +253,7 @@ class Agent:
           system_instructions=si,
           capabilities_config=self._config.capabilities,
           workspaces=self._config.workspaces,
+          skills_paths=self._config.skills_paths,
       )
 
       logging.info("Starting connection and creating conversation...")

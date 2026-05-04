@@ -46,7 +46,6 @@ class AgentTest(unittest.IsolatedAsyncioTestCase):
     async with agent.Agent(config) as ag:
       self.assertEqual(ag._conversation, mock_conversation)
 
-
   @mock.patch(
       "google.antigravity.agent."
       "local_connection.LocalConnectionStrategy"
@@ -543,6 +542,29 @@ class AgentTest(unittest.IsolatedAsyncioTestCase):
       _, kwargs = mock_strategy_class.call_args
       ws = kwargs.get("workspaces")
       self.assertEqual(ws, workspaces)
+
+  @mock.patch(
+      "google.antigravity.agent."
+      "local_connection.LocalConnectionStrategy"
+  )
+  @mock.patch.object(conversation.Conversation, "create")
+  async def test_agent_with_skills_paths(
+      self, mock_conv_create, mock_strategy_class
+  ):
+    del mock_conv_create  # Unused.
+
+    mock_strategy_instance = mock.MagicMock()
+    mock_strategy_instance.stop = mock.AsyncMock()
+    mock_strategy_class.return_value = mock_strategy_instance
+
+    skills_paths = ["/path/1", "/path/2"]
+    config = agent.AgentConfig(
+        system_instructions="test", skills_paths=skills_paths
+    )
+    async with agent.Agent(config) as _:
+      _, kwargs = mock_strategy_class.call_args
+      sp = kwargs.get("skills_paths")
+      self.assertEqual(sp, skills_paths)
 
   @mock.patch(
       "google.antigravity.agent."
