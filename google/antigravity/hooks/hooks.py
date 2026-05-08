@@ -20,7 +20,7 @@ returned by their lifecycle callbacks.
 from __future__ import annotations
 
 import abc
-from typing import Any, Optional
+from typing import Any, Awaitable, Callable, Optional
 
 from google.antigravity.types import AskQuestionInteractionSpec
 from google.antigravity.types import HookResult
@@ -213,3 +213,163 @@ class OnCompactionHook(InspectHook):
   """
 
   pass
+
+
+# --- Decorators ---
+
+
+def pre_turn(func: Callable[[str], Awaitable[HookResult]]):
+  """Decorator for PreTurnHook."""
+
+  class FunctionPreTurnHook(PreTurnHook):
+
+    def __init__(self, f):
+      self.f = f
+
+    async def run(self, context: HookContext, data: Any) -> HookResult:
+      return await self.f(data)
+
+    async def __call__(self, *args, **kwargs):
+      return await self.f(*args, **kwargs)
+
+  return FunctionPreTurnHook(func)
+
+
+def pre_tool_call_decide(func: Callable[[Any], Awaitable[HookResult]]):
+  """Decorator for PreToolCallDecideHook."""
+
+  class FunctionPreToolCallDecideHook(PreToolCallDecideHook):
+
+    def __init__(self, f):
+      self.f = f
+
+    async def run(self, context: HookContext, data: Any) -> HookResult:
+      return await self.f(data)
+
+    async def __call__(self, *args, **kwargs):
+      return await self.f(*args, **kwargs)
+
+  return FunctionPreToolCallDecideHook(func)
+
+
+def on_interaction(
+    func: Callable[[AskQuestionInteractionSpec], Awaitable[QuestionHookResult]],
+):
+  """Decorator for OnInteractionHook."""
+
+  class FunctionOnInteractionHook(OnInteractionHook):
+
+    def __init__(self, f):
+      self.f = f
+
+    async def run(
+        self, context: HookContext, data: AskQuestionInteractionSpec
+    ) -> QuestionHookResult:
+      return await self.f(data)
+
+    async def __call__(self, *args, **kwargs):
+      return await self.f(*args, **kwargs)
+
+  return FunctionOnInteractionHook(func)
+
+
+def on_compaction(func: Callable[[Any], Awaitable[None]]):
+  """Decorator for OnCompactionHook."""
+
+  class FunctionOnCompactionHook(OnCompactionHook):
+
+    def __init__(self, f):
+      self.f = f
+
+    async def run(self, context: HookContext, data: Any) -> None:
+      await self.f(data)
+
+    async def __call__(self, *args, **kwargs):
+      await self.f(*args, **kwargs)
+
+  return FunctionOnCompactionHook(func)
+
+
+def on_session_start(func: Callable[[], Awaitable[None]]):
+  """Decorator for OnSessionStartHook."""
+
+  class FunctionOnSessionStartHook(OnSessionStartHook):
+
+    def __init__(self, f):
+      self.f = f
+
+    async def run(self, context: HookContext, data: Any) -> None:
+      await self.f()
+
+    async def __call__(self, *args, **kwargs):
+      await self.f(*args, **kwargs)
+
+  return FunctionOnSessionStartHook(func)
+
+
+def on_session_end(func: Callable[[], Awaitable[None]]):
+  """Decorator for OnSessionEndHook."""
+
+  class FunctionOnSessionEndHook(OnSessionEndHook):
+
+    def __init__(self, f):
+      self.f = f
+
+    async def run(self, context: HookContext, data: Any) -> None:
+      await self.f()
+
+    async def __call__(self, *args, **kwargs):
+      await self.f(*args, **kwargs)
+
+  return FunctionOnSessionEndHook(func)
+
+
+def post_turn(func: Callable[[str], Awaitable[None]]):
+  """Decorator for PostTurnHook."""
+
+  class FunctionPostTurnHook(PostTurnHook):
+
+    def __init__(self, f):
+      self.f = f
+
+    async def run(self, context: HookContext, data: Any) -> None:
+      await self.f(data)
+
+    async def __call__(self, *args, **kwargs):
+      await self.f(*args, **kwargs)
+
+  return FunctionPostTurnHook(func)
+
+
+def post_tool_call(func: Callable[[Any], Awaitable[None]]):
+  """Decorator for PostToolCallHook."""
+
+  class FunctionPostToolCallHook(PostToolCallHook):
+
+    def __init__(self, f):
+      self.f = f
+
+    async def run(self, context: HookContext, data: Any) -> None:
+      await self.f(data)
+
+    async def __call__(self, *args, **kwargs):
+      await self.f(*args, **kwargs)
+
+  return FunctionPostToolCallHook(func)
+
+
+def on_tool_error(func: Callable[[Exception], Awaitable[Any]]):
+  """Decorator for OnToolErrorHook."""
+
+  class FunctionOnToolErrorHook(OnToolErrorHook):
+
+    def __init__(self, f):
+      self.f = f
+
+    async def run(self, context: HookContext, data: Any) -> Any:
+      return await self.f(data)
+
+    async def __call__(self, *args, **kwargs):
+      return await self.f(*args, **kwargs)
+
+  return FunctionOnToolErrorHook(func)

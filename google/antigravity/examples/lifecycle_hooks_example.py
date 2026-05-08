@@ -75,99 +75,88 @@ from google.antigravity.tools.tool_runner import ToolRunner
 # =============================================================================
 
 
-class LogSessionStart(hooks.OnSessionStartHook):
+@hooks.on_session_start
+async def log_session_start():
   """Logs when the session starts."""
-
-  async def run(self, context, data):
-    print("[Hook] Session started.")
+  print("[Hook] Session started.")
 
 
-class LogSessionEnd(hooks.OnSessionEndHook):
+@hooks.on_session_end
+async def log_session_end():
   """Logs when the session ends."""
-
-  async def run(self, context, data):
-    print("[Hook] Session ended.")
+  print("[Hook] Session ended.")
 
 
-class LogPreTurn(hooks.PreTurnHook):
+@hooks.pre_turn
+async def log_pre_turn(data) -> types.HookResult:
   """Logs the user prompt before each turn. Always allows."""
-
-  async def run(self, context, data) -> types.HookResult:
-    print(f"[Hook] Pre-turn — user prompt: {data!r}")
-    return types.HookResult(allow=True)
+  print(f"[Hook] Pre-turn — user prompt: {data!r}")
+  return types.HookResult(allow=True)
 
 
-class LogPostTurn(hooks.PostTurnHook):
+@hooks.post_turn
+async def log_post_turn(data):
   """Logs the final model response after each turn."""
-
-  async def run(self, context, data):
-    print(f"[Hook] Post-turn — response: {data!r}")
+  print(f"[Hook] Post-turn — response: {data!r}")
 
 
-class LogPreToolCallDecide(hooks.PreToolCallDecideHook):
+@hooks.pre_tool_call_decide
+async def log_pre_tool_call_decide(data) -> types.HookResult:
   """Logs tool calls before execution. Always approves."""
-
-  async def run(self, context, data) -> types.HookResult:
-    print(f"[Hook] Pre-tool-call (decide) — tool: {data}")
-    return types.HookResult(allow=True)
+  print(f"[Hook] Pre-tool-call (decide) — tool: {data}")
+  return types.HookResult(allow=True)
 
 
-class LogPostToolCall(hooks.PostToolCallHook):
+@hooks.post_tool_call
+async def log_post_tool_call(data):
   """Logs tool results after execution."""
-
-  async def run(self, context, data):
-    print(f"[Hook] Post-tool-call — result: {data}")
+  print(f"[Hook] Post-tool-call — result: {data}")
 
 
-class LogToolError(hooks.OnToolErrorHook):
+@hooks.on_tool_error
+async def log_tool_error(data):
   """Logs tool errors. Does not provide a recovery value."""
-
-  async def run(self, context, data):
-    print(f"[Hook] Tool error — {data}")
-    return None  # No recovery; let the error propagate.
+  print(f"[Hook] Tool error — {data}")
+  return None  # No recovery; let the error propagate.
 
 
-class LogPreSubagentCall(hooks.PreToolCallDecideHook):
+@hooks.pre_tool_call_decide
+async def log_pre_subagent_call(data) -> types.HookResult:
   """Logs subagent invocations by filtering on START_SUBAGENT. Always allows."""
-
-  async def run(self, context, data) -> types.HookResult:
-    if data.name == types.BuiltinTools.START_SUBAGENT.value:
-      print(f"[Hook] Pre-subagent-call — tool_call: {data}")
-    return types.HookResult(allow=True)
+  if data.name == types.BuiltinTools.START_SUBAGENT.value:
+    print(f"[Hook] Pre-subagent-call — tool_call: {data}")
+  return types.HookResult(allow=True)
 
 
-class LogPostSubagentCall(hooks.PostToolCallHook):
+@hooks.post_tool_call
+async def log_post_subagent_call(data):
   """Logs when a subagent trajectory completes by filtering on START_SUBAGENT."""
-
-  async def run(self, context, data):
-    if data.name == types.BuiltinTools.START_SUBAGENT.value:
-      print(f"[Hook] Post-subagent-call — result: {data}")
+  if data.name == types.BuiltinTools.START_SUBAGENT.value:
+    print(f"[Hook] Post-subagent-call — result: {data}")
 
 
-class LogCompaction(hooks.OnCompactionHook):
+@hooks.on_compaction
+async def log_compaction(data):
   """Logs context compaction events."""
-
-  async def run(self, context, data):
-    print(f"[Hook] Compaction — step: {data}")
+  print(f"[Hook] Compaction — step: {data}")
 
 
-class LogInteraction(hooks.OnInteractionHook):
+@hooks.on_interaction
+async def log_interaction(data) -> types.QuestionHookResult:
   """Logs interaction requests. Skips all questions."""
-
-  async def run(self, context, data) -> types.QuestionHookResult:
-    print(f"[Hook] Interaction — spec: {data.questions}")
-    # Auto-select the first option for each question.
-    responses = []
-    for q in data.questions:
-      if q.options:
-        responses.append(
-            types.QuestionResponse(selected_option_ids=[q.options[0].id])
-        )
-      else:
-        responses.append(
-            types.QuestionResponse(freeform_response="auto-response")
-        )
-    return types.QuestionHookResult(responses=responses)
+  print(f"[Hook] Interaction — spec: {data.questions}")
+  # Auto-select the first option for each question.
+  responses = []
+  for q in data.questions:
+    if q.options:
+      responses.append(
+          types.QuestionResponse(selected_option_ids=[q.options[0].id])
+      )
+    else:
+      responses.append(
+          types.QuestionResponse(freeform_response="auto-response")
+      )
+  return types.QuestionHookResult(responses=responses)
 
 
 # =============================================================================
@@ -228,21 +217,21 @@ async def run():
   """Runs the lifecycle hooks example."""
   # Build the HookRunner with every supported hook registered.
   hr = hooks_runner.HookRunner(
-      on_session_start_hooks=[LogSessionStart()],
-      on_session_end_hooks=[LogSessionEnd()],
-      pre_turn_hooks=[LogPreTurn()],
-      post_turn_hooks=[LogPostTurn()],
+      on_session_start_hooks=[log_session_start],
+      on_session_end_hooks=[log_session_end],
+      pre_turn_hooks=[log_pre_turn],
+      post_turn_hooks=[log_post_turn],
       pre_tool_call_decide_hooks=[
-          LogPreToolCallDecide(),
-          LogPreSubagentCall(),
+          log_pre_tool_call_decide,
+          log_pre_subagent_call,
       ],
       post_tool_call_hooks=[
-          LogPostToolCall(),
-          LogPostSubagentCall(),
+          log_post_tool_call,
+          log_post_subagent_call,
       ],
-      on_tool_error_hooks=[LogToolError()],
-      on_compaction_hooks=[LogCompaction()],
-      on_interaction_hooks=[LogInteraction()],
+      on_tool_error_hooks=[log_tool_error],
+      on_compaction_hooks=[log_compaction],
+      on_interaction_hooks=[log_interaction],
   )
 
   tool_runner = ToolRunner(tools=[greet, broken_tool])

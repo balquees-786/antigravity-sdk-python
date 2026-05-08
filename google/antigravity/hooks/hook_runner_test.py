@@ -415,5 +415,64 @@ class HookRunnerTest(unittest.IsolatedAsyncioTestCase):
     )
 
 
+class DecoratorTest(unittest.IsolatedAsyncioTestCase):
+
+  async def test_pre_turn_decorator(self):
+    @hooks.pre_turn
+    async def my_pre_turn(data):
+      return hooks.HookResult(allow=True, message=data)
+
+    self.assertIsInstance(my_pre_turn, hooks.PreTurnHook)
+    res = await my_pre_turn.run(hooks.HookContext(), "test_prompt")
+    self.assertTrue(res.allow)
+    self.assertEqual(res.message, "test_prompt")
+    res2 = await my_pre_turn("direct_call")
+    self.assertTrue(res2.allow)
+    self.assertEqual(res2.message, "direct_call")
+
+  async def test_pre_tool_call_decide_decorator(self):
+    @hooks.pre_tool_call_decide
+    async def my_decide(data):
+      return hooks.HookResult(allow=False, message=data.name)
+
+    self.assertIsInstance(my_decide, hooks.PreToolCallDecideHook)
+    tool_call = types.ToolCall(name="my_tool", args={})
+    res = await my_decide.run(hooks.HookContext(), tool_call)
+    self.assertFalse(res.allow)
+    self.assertEqual(res.message, "my_tool")
+
+  async def test_on_interaction_decorator(self):
+    @hooks.on_interaction
+    async def my_interaction(data):
+      return types.QuestionHookResult(responses=[])
+
+    self.assertIsInstance(my_interaction, hooks.OnInteractionHook)
+    res = await my_interaction.run(
+        hooks.HookContext(), types.AskQuestionInteractionSpec(questions=[])
+    )
+    self.assertEqual(res.responses, [])
+
+  async def test_post_turn_decorator(self):
+    called_with = None
+
+    @hooks.post_turn
+    async def my_post_turn(data):
+      nonlocal called_with
+      called_with = data
+
+    self.assertIsInstance(my_post_turn, hooks.PostTurnHook)
+    await my_post_turn.run(hooks.HookContext(), "response_data")
+    self.assertEqual(called_with, "response_data")
+
+  async def test_on_tool_error_decorator(self):
+    @hooks.on_tool_error
+    async def my_tool_error(data):
+      return f"recovered from {type(data).__name__}"
+
+    self.assertIsInstance(my_tool_error, hooks.OnToolErrorHook)
+    res = await my_tool_error.run(hooks.HookContext(), ValueError("error"))
+    self.assertEqual(res, "recovered from ValueError")
+
+
 if __name__ == "__main__":
   unittest.main()

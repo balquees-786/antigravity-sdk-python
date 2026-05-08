@@ -235,12 +235,11 @@ class LocalConnectionTest(unittest.IsolatedAsyncioTestCase):
   async def test_turn_hook_deny(self):
     hr = hook_runner.HookRunner()
 
-    class DenyingTurnHook(hooks_base.PreTurnHook):
+    @hooks_base.pre_turn
+    async def denying_turn(data):
+      return hooks_base.HookResult(allow=False, message="Denied by hook")
 
-      async def run(self, context, data):  # pylint: disable=unused-argument
-        return hooks_base.HookResult(allow=False, message="Denied by hook")
-
-    hr.register_hook(DenyingTurnHook())
+    hr.register_hook(denying_turn)
 
     harness = test_utils.TestLocalHarness(
         test_case=self,
@@ -262,12 +261,11 @@ class LocalConnectionTest(unittest.IsolatedAsyncioTestCase):
   async def test_tool_hook_deny(self):
     hr = hook_runner.HookRunner()
 
-    class DenyingToolHook(hooks_base.PreToolCallDecideHook):
+    @hooks_base.pre_tool_call_decide
+    async def denying_tool(data):
+      return hooks_base.HookResult(allow=False, message="Denied tool")
 
-      async def run(self, context, data):  # pylint: disable=unused-argument
-        return hooks_base.HookResult(allow=False, message="Denied tool")
-
-    hr.register_hook(DenyingToolHook())
+    hr.register_hook(denying_tool)
 
     harness = test_utils.TestLocalHarness(
         test_case=self,
@@ -296,12 +294,11 @@ class LocalConnectionTest(unittest.IsolatedAsyncioTestCase):
   async def test_tool_confirmation_request_integration(self):
     hr = hook_runner.HookRunner()
 
-    class DenyingToolHook(hooks_base.PreToolCallDecideHook):
+    @hooks_base.pre_tool_call_decide
+    async def denying_tool(data):
+      return hooks_base.HookResult(allow=False)
 
-      async def run(self, context, data):  # pylint: disable=unused-argument
-        return hooks_base.HookResult(allow=False)
-
-    hr.register_hook(DenyingToolHook())
+    hr.register_hook(denying_tool)
 
     harness = test_utils.TestLocalHarness(
         test_case=self,
@@ -337,15 +334,14 @@ class LocalConnectionTest(unittest.IsolatedAsyncioTestCase):
     hook_event = asyncio.Event()
     captured_tool_names = []
 
-    class CapturingToolHook(hooks_base.PreToolCallDecideHook):
-
-      async def run(self, context, data):  # pylint: disable=unused-argument
-        captured_tool_names.append(data.name)
-        hook_event.set()
-        return hooks_base.HookResult(allow=True)
+    @hooks_base.pre_tool_call_decide
+    async def capturing_tool(data):
+      captured_tool_names.append(data.name)
+      hook_event.set()
+      return hooks_base.HookResult(allow=True)
 
     hr = hook_runner.HookRunner()
-    hr.register_hook(CapturingToolHook())
+    hr.register_hook(capturing_tool)
 
     harness = test_utils.TestLocalHarness(
         test_case=self,
@@ -377,15 +373,14 @@ class LocalConnectionTest(unittest.IsolatedAsyncioTestCase):
     hook_event = asyncio.Event()
     captured_tool_names = []
 
-    class CapturingToolHook(hooks_base.PreToolCallDecideHook):
-
-      async def run(self, context, data):  # pylint: disable=unused-argument
-        captured_tool_names.append(data.name)
-        hook_event.set()
-        return hooks_base.HookResult(allow=True)
+    @hooks_base.pre_tool_call_decide
+    async def capturing_tool(data):
+      captured_tool_names.append(data.name)
+      hook_event.set()
+      return hooks_base.HookResult(allow=True)
 
     hr = hook_runner.HookRunner()
-    hr.register_hook(CapturingToolHook())
+    hr.register_hook(capturing_tool)
 
     harness = test_utils.TestLocalHarness(
         test_case=self,
@@ -414,16 +409,15 @@ class LocalConnectionTest(unittest.IsolatedAsyncioTestCase):
   async def test_question_hook_integration(self):
     hr = hook_runner.HookRunner()
 
-    class AutoAnswerQuestionHook(hooks_base.OnInteractionHook):
+    @hooks_base.on_interaction
+    async def auto_answer(data):
+      return hooks_base.QuestionHookResult(
+          responses=[
+              QuestionResponse(selected_option_ids=["1"]),
+          ]
+      )
 
-      async def run(self, context, data):  # pylint: disable=unused-argument
-        return hooks_base.QuestionHookResult(
-            responses=[
-                QuestionResponse(selected_option_ids=["1"]),
-            ]
-        )
-
-    hr.register_hook(AutoAnswerQuestionHook())
+    hr.register_hook(auto_answer)
 
     harness = test_utils.TestLocalHarness(
         test_case=self,
@@ -461,19 +455,15 @@ class LocalConnectionTest(unittest.IsolatedAsyncioTestCase):
     hr = hook_runner.HookRunner()
     hook_event = asyncio.Event()
 
-    class CountingHook(hooks_base.PreToolCallDecideHook):
+    call_count = [0]
 
-      def __init__(self):
-        self.call_count = 0
+    @hooks_base.pre_tool_call_decide
+    async def counting_hook(data):
+      call_count[0] += 1
+      hook_event.set()
+      return hooks_base.HookResult(allow=True)
 
-      async def run(self, context, data):  # pylint: disable=unused-argument
-        del context, data
-        self.call_count += 1
-        hook_event.set()
-        return hooks_base.HookResult(allow=True)
-
-    hook_instance = CountingHook()
-    hr.register_hook(hook_instance)
+    hr.register_hook(counting_hook)
 
     harness = test_utils.TestLocalHarness(
         test_case=self,
@@ -501,7 +491,7 @@ class LocalConnectionTest(unittest.IsolatedAsyncioTestCase):
     await harness.wait_for_response()
 
     # Hook should only be called ONCE despite 3 events, thanks to _handled_waits
-    self.assertEqual(hook_instance.call_count, 1)
+    self.assertEqual(call_count[0], 1)
     self.assertEqual(len(harness.ws.sent_messages), 1)
 
   async def test_async_non_blocking_dispatch(self):
