@@ -86,9 +86,8 @@ async def run():
           "If the user asks for the inventory or what you have, use"
           " get_fruit_inventory."
       ),
-      policies=[
-          policy.allow("*")
-      ],  # Auto-approve all tools to avoid hanging in simulation
+      # Auto-approve all tools to avoid hanging in simulation
+      policies=[policy.allow_all()],
   )
 
   logging.info("Starting Agent session...")

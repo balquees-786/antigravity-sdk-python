@@ -106,7 +106,7 @@ async def main():
         ),
         mcp_servers=mcp_servers,
         capabilities=types.CapabilitiesConfig(),
-        policies=[policy.allow("*")],
+        policies=[policy.allow_all()],
     )
 
     async with Agent(config) as agent:

@@ -64,7 +64,7 @@ async def main():
       tools=[read_file_upside_down],
       mcp_servers=mcp_servers,
       capabilities=types.CapabilitiesConfig(),
-      policies=[policy.allow("*")],
+      policies=[policy.allow_all()],
   )
   async with Agent(config) as agent:
 
