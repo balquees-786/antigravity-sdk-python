@@ -189,11 +189,11 @@ class PreToolCallDecideHook(DecideHook[types.ToolCall]):
   pass
 
 
-class PostToolCallHook(InspectHook[Any]):
+class PostToolCallHook(InspectHook[types.ToolResult]):
   """Invoked after a tool call completes.
 
-  The `data` parameter receives the `types.Step` object containing the tool call
-  and its results.
+  The `data` parameter receives the `types.ToolResult` object containing the
+  tool execution details.
   """
 
   pass

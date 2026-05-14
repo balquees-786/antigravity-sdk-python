@@ -2408,6 +2408,9 @@ class LocalConnectionToolCallHooksTest(unittest.IsolatedAsyncioTestCase):
     await harness.wait_for_event(hook_event)
 
     self.assertEqual(len(captured_results), 1)
+    self.assertIsInstance(captured_results[0], types.ToolResult)
+    self.assertEqual(captured_results[0].name, "echo_tool")
+    self.assertEqual(captured_results[0].result, '{"echo": {"msg": "hi"}}')
 
   async def test_on_tool_error_hook_with_recovery(self):
     """Verifies OnToolErrorHook can provide recovery values on tool failure."""
