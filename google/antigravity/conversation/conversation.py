@@ -34,6 +34,28 @@ from google.antigravity.connections import connection
 _DEFAULT_MAX_HISTORY_SIZE = 10_000
 
 
+def _zero_usage() -> types.UsageMetadata:
+  """Returns a UsageMetadata with all counters set to zero."""
+  return types.UsageMetadata(
+      prompt_token_count=0,
+      cached_content_token_count=0,
+      candidates_token_count=0,
+      thoughts_token_count=0,
+      total_token_count=0,
+  )
+
+
+def _add_usage(
+    target: types.UsageMetadata, source: types.UsageMetadata
+) -> None:
+  """Adds source usage counts into target, treating None as zero."""
+  target.prompt_token_count += source.prompt_token_count or 0
+  target.cached_content_token_count += source.cached_content_token_count or 0
+  target.candidates_token_count += source.candidates_token_count or 0
+  target.thoughts_token_count += source.thoughts_token_count or 0
+  target.total_token_count += source.total_token_count or 0
+
+
 class Conversation:
   """Stateful session wrapping a single conversation with the agent.
 
@@ -60,13 +82,7 @@ class Conversation:
     self._turn_start_indices: list[int] = []
     self._compaction_indices: list[int] = []
     self._max_history_size = max_history_size
-    self._cumulative_usage = types.UsageMetadata(
-        prompt_token_count=0,
-        candidates_token_count=0,
-        total_token_count=0,
-        thoughts_token_count=0,
-        cached_content_token_count=0,
-    )
+    self._cumulative_usage = _zero_usage()
     self._turn_usage: types.UsageMetadata | None = None
 
   @classmethod
@@ -242,13 +258,8 @@ class Conversation:
     self._steps.clear()
     self._turn_start_indices.clear()
     self._compaction_indices.clear()
-    self._cumulative_usage = types.UsageMetadata(
-        prompt_token_count=0,
-        candidates_token_count=0,
-        total_token_count=0,
-        thoughts_token_count=0,
-        cached_content_token_count=0,
-    )
+    self._cumulative_usage = _zero_usage()
+    self._turn_usage = None
 
   def _enforce_max_history(self) -> None:
     """Trims history to max_history_size if a limit is set."""
@@ -304,27 +315,11 @@ class Conversation:
 
   def _accumulate_usage(self, usage: types.UsageMetadata) -> None:
     """Adds per-step usage counts to the session-level cumulative totals."""
-    cu = self._cumulative_usage
-    cu.prompt_token_count += usage.prompt_token_count or 0
-    cu.cached_content_token_count += usage.cached_content_token_count or 0
-    cu.candidates_token_count += usage.candidates_token_count or 0
-    cu.thoughts_token_count += usage.thoughts_token_count or 0
-    cu.total_token_count += usage.total_token_count or 0
+    _add_usage(self._cumulative_usage, usage)
 
     if self._turn_usage is None:
-      self._turn_usage = types.UsageMetadata(
-          prompt_token_count=0,
-          candidates_token_count=0,
-          total_token_count=0,
-          thoughts_token_count=0,
-          cached_content_token_count=0,
-      )
-    tu = self._turn_usage
-    tu.prompt_token_count += usage.prompt_token_count or 0
-    tu.cached_content_token_count += usage.cached_content_token_count or 0
-    tu.candidates_token_count += usage.candidates_token_count or 0
-    tu.thoughts_token_count += usage.thoughts_token_count or 0
-    tu.total_token_count += usage.total_token_count or 0
+      self._turn_usage = _zero_usage()
+    _add_usage(self._turn_usage, usage)
 
   # ---------------------------------------------------------------------------
   # Lifecycle
