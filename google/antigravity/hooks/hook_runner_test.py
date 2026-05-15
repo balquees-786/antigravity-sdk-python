@@ -69,7 +69,7 @@ class HookRunnerTest(unittest.IsolatedAsyncioTestCase):
     self.assertEqual(captured, [["image", "text"]])
     self.assertIsInstance(runner.session_context, hooks.SessionContext)
 
-  async def test_dispatch_pre_turn_multimodal_none(self):
+  async def test_dispatch_pre_turn_none_normalizes_to_empty_string(self):
     captured = []
 
     class DummyPreTurnHook(hooks.PreTurnHook):
@@ -83,7 +83,7 @@ class HookRunnerTest(unittest.IsolatedAsyncioTestCase):
     runner = hook_runner.HookRunner(pre_turn_hooks=[DummyPreTurnHook()])
     res, _ = await runner.dispatch_pre_turn(None)
     self.assertTrue(res.allow)
-    self.assertEqual(captured, [None])
+    self.assertEqual(captured, [""])
     self.assertIsInstance(runner.session_context, hooks.SessionContext)
 
   async def test_dispatch_session_start(self):

@@ -261,6 +261,27 @@ class LocalConnectionTest(unittest.IsolatedAsyncioTestCase):
     self.assertEqual(steps[0].status, types.StepStatus.CANCELED)
     self.assertEqual(steps[0].error, "Denied by hook")
 
+  async def test_send_none_dispatches_turn_hook_with_empty_string(self):
+    hr = hook_runner.HookRunner()
+    captured = []
+
+    @hooks_base.pre_turn
+    async def capturing_turn(data: str) -> hooks_base.HookResult:
+      captured.append(data)
+      return hooks_base.HookResult(allow=True)
+
+    hr.register_hook(capturing_turn)
+
+    harness = test_utils.TestLocalHarness(
+        test_case=self,
+        process=self.mock_process,
+        tool_runner=self.tool_runner,
+        hook_runner=hr,
+    )
+
+    await harness.conn.send(None)
+    self.assertEqual(captured, [""])
+
   async def test_tool_hook_deny(self):
     hr = hook_runner.HookRunner()
 

@@ -157,6 +157,7 @@ class HookRunner:
     Returns:
       A tuple of (HookResult, TurnContext).
     """
+    prompt = prompt or ''
     turn_context = hooks_base.TurnContext(self.session_context)
     for hook in self._pre_turn_hooks:
       res = await hook.run(context=turn_context, data=prompt)
