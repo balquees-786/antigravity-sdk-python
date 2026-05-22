@@ -206,7 +206,15 @@ if [[ "${PUBLISH:-}" != "true" && -z "${PUBLISH_PREBUILT_VERSION:-}" ]]; then
   # 1. Upload wheels to GCS bucket
   GCS_DEST="gs://agy-sdk-wheels/v${VERSION}"
   echo "--- Uploading wheels to GCS staging: ${GCS_DEST}/ ---"
+  
+  # Impersonate the agy-sdk-stager service account keylessly using Kokoro's ambient credentials
+  echo "--- Activating agy-sdk-stager impersonation ---"
+  gcloud config set auth/impersonate_service_account agy-sdk-stager@agy-sdk.iam.gserviceaccount.com
+  
   gcloud storage cp "${DIST_DIR}"/*.whl "${GCS_DEST}/"
+  
+  # Unset stager impersonation to return to default credentials
+  gcloud config unset auth/impersonate_service_account
 
   # 2. Upload wheels to Google Drive folder
   DRIVE_PARENT_ID="1IKWv5h6lEtat454DiwZsTa3rkG1kEqxH"
