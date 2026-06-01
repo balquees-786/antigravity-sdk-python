@@ -21,12 +21,15 @@ types. They are pure Python Pydantic V2 models with no proto dependencies.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 import enum
 import mimetypes
 import pathlib
-from typing import Annotated, Any, AsyncIterator, Callable, Literal
+from typing import Annotated, Any, AsyncIterator, Callable, Literal, TypeVar, cast
 
 import pydantic
+
+_BaseMediaT = TypeVar("_BaseMediaT", bound="_BaseMedia")
 
 __all__ = [
     "ThinkingLevel",
@@ -74,6 +77,7 @@ __all__ = [
     "Document",
     "Audio",
     "Video",
+    "Content",
 ]
 
 # =============================================================================
@@ -763,7 +767,7 @@ class AntigravityValidationError(Exception):
     Returns:
       An AntigravityValidationError wrapping the Pydantic error.
     """
-    return cls(message=str(exc), errors=exc.errors())
+    return cls(message=str(exc), errors=cast(Any, exc.errors()))
 
 
 class TriggerDelivery(str, enum.Enum):
@@ -1053,8 +1057,10 @@ class _BaseMedia(pydantic.BaseModel):
 
   @classmethod
   def from_file(
-      cls, path: str | pathlib.Path, description: str | None = None
-  ) -> _BaseMedia:
+      cls: type[_BaseMediaT],
+      path: str | pathlib.Path,
+      description: str | None = None,
+  ) -> _BaseMediaT:
     """Instantiates a media content primitive from a local file path.
 
     Args:
@@ -1125,7 +1131,7 @@ class Video(_BaseMedia):
 
 
 ContentPrimitive = str | Image | Document | Audio | Video
-Content = ContentPrimitive | list[ContentPrimitive]
+Content = ContentPrimitive | Sequence[ContentPrimitive]
 
 # Registry mapping each supported MIME type to its media class.
 # Built once at import time from the per-category frozensets.
@@ -1172,4 +1178,7 @@ def from_file(
         f"Unsupported MIME type: '{mime_guess}'. "
         f"Supported file formats in the SDK are: {sorted(_MIME_TO_MEDIA_CLASS)}"
     )
-  return media_cls(data=data, mime_type=mime_guess, description=description)  # pytype: disable=bad-return-type
+  return cast(
+      Image | Document | Audio | Video,
+      media_cls(data=data, mime_type=mime_guess, description=description),
+  )

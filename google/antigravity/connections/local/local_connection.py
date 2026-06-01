@@ -100,6 +100,12 @@ _STATUS_MAP = {
     "STATE_TERMINAL_ERROR": types.StepStatus.TERMINAL_ERROR,
 }
 
+_TARGET_MAP = {
+    "TARGET_USER": types.StepTarget.USER,
+    "TARGET_ENVIRONMENT": types.StepTarget.ENVIRONMENT,
+    "TARGET_UNSPECIFIED": types.StepTarget.UNSPECIFIED,
+}
+
 # Map from BuiltinTools enum to the proto field name on StepUpdate.
 # Used for (a) determining step type and (b) extracting tool-confirmation args.
 # Kept as an explicit map because enum values and proto field names may diverge.
@@ -228,7 +234,6 @@ class LocalConnectionStep(types.Step):
 
   cascade_id: str = ""
   trajectory_id: str = ""
-  target: str = ""
   http_code: int = 0
 
   @classmethod
@@ -295,10 +300,18 @@ class LocalConnectionStep(types.Step):
       step_type = types.StepType.TEXT_RESPONSE
 
     source_str = step_dict.get("source")
-    source = _SOURCE_MAP.get(source_str, types.StepSource.UNKNOWN)
+    source = (
+        _SOURCE_MAP.get(source_str, types.StepSource.UNKNOWN)
+        if isinstance(source_str, str)
+        else types.StepSource.UNKNOWN
+    )
 
     status_str = step_dict.get("state")
-    status = _STATUS_MAP.get(status_str, types.StepStatus.UNKNOWN)
+    status = (
+        _STATUS_MAP.get(status_str, types.StepStatus.UNKNOWN)
+        if isinstance(status_str, str)
+        else types.StepStatus.UNKNOWN
+    )
 
     is_from_model = source == types.StepSource.MODEL
     is_done = status == types.StepStatus.DONE
@@ -348,7 +361,9 @@ class LocalConnectionStep(types.Step):
         error=error_msg,
         http_code=http_code,
         is_complete_response=is_complete_response,
-        target=step_dict.get("target", ""),
+        target=_TARGET_MAP.get(
+            step_dict.get("target", ""), types.StepTarget.UNKNOWN
+        ),
         structured_output=structured_output,
     )
 
@@ -495,11 +510,12 @@ class LocalConnection(connection.Connection):
     """Returns the conversation identifier, if one exists."""
     return self._cascade_id or ""
 
-  async def send(self, prompt: types.Content | None) -> None:
+  async def send(self, prompt: types.Content | None, **kwargs: Any) -> None:
     """Sends a prompt to the agent.
 
     Args:
       prompt: The user prompt or content to send.
+      **kwargs: Strategy-specific options.
     """
     self._cancelled = False
     self._client_cancelled = False
@@ -524,7 +540,12 @@ class LocalConnection(connection.Connection):
     elif isinstance(prompt, str):
       event = localharness_pb2.InputEvent(user_input=prompt)
     else:
-      content_list = prompt if isinstance(prompt, list) else [prompt]
+      if isinstance(prompt, collections.abc.Sequence) and not isinstance(
+          prompt, (str, bytes)
+      ):
+        content_list = prompt
+      else:
+        content_list = [prompt]
       user_input_pb = localharness_pb2.UserInput(
           parts=[_to_proto_input_content(c) for c in content_list]
       )
@@ -1395,6 +1416,10 @@ def _get_default_binary_path() -> str:
 class LocalConnectionStrategy(connection.ConnectionStrategy):
   """Strategy for establishing a LocalConnection."""
 
+  _gemini_config: types.GeminiConfig | None
+  _system_instructions: types.SystemInstructions | None
+  _connection: LocalConnection | None
+
   def __init__(
       self,
       *,
@@ -1412,8 +1437,10 @@ class LocalConnectionStrategy(connection.ConnectionStrategy):
     self._binary_path = _get_default_binary_path()
     self._tool_runner = tool_runner
     self._hook_runner = hook_runner
+    self._connection: LocalConnection | None = None
 
     # Normalize str shorthand to GeminiConfig model.
+    self._gemini_config: types.GeminiConfig | None = None
     if isinstance(gemini_config, str):
       self._gemini_config = types.GeminiConfig(
           models=types.ModelConfig(default=types.ModelEntry(name=gemini_config))
@@ -1423,6 +1450,7 @@ class LocalConnectionStrategy(connection.ConnectionStrategy):
     self._skills_paths = skills_paths
 
     # Normalize str shorthand to SystemInstructions model.
+    self._system_instructions: types.SystemInstructions | None = None
     if isinstance(system_instructions, str):
       self._system_instructions = types.TemplatedSystemInstructions(
           sections=[types.SystemInstructionSection(content=system_instructions)]

@@ -22,6 +22,7 @@ import asyncio
 from collections.abc import AsyncIterator
 import pathlib
 import tempfile
+from typing import Any, cast
 import unittest
 from unittest import mock
 
@@ -88,7 +89,7 @@ class ToolCallTest(unittest.TestCase):
     Why: Forward compatibility — newer backends may add fields.
     How: Constructs a ToolCall with an unknown field and asserts it's absent.
     """
-    tc = types.ToolCall(name="tool", unknown_field="value")
+    tc = types.ToolCall(name="tool", **cast(Any, {"unknown_field": "value"}))
     self.assertFalse(hasattr(tc, "unknown_field"))
 
   def test_missing_name_raises(self):
@@ -162,7 +163,7 @@ class ToolResultTest(unittest.TestCase):
     Why: Consistent extra field handling across all models.
     How: Passes an unknown field and asserts it's not present.
     """
-    tr = types.ToolResult(name="tool", unknown="value")
+    tr = types.ToolResult(name="tool", **cast(Any, {"unknown": "value"}))
     self.assertFalse(hasattr(tr, "unknown"))
 
 

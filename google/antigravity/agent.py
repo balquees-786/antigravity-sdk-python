@@ -16,6 +16,7 @@
 
 import contextlib
 import logging
+from typing import cast
 
 from google.antigravity import types
 from google.antigravity.connections import connection as connection_module
@@ -44,8 +45,9 @@ class Agent:
     """
     self._config = config.model_copy(deep=True)
     if self._config.response_schema:
-      self._config.capabilities.finish_tool_schema_json = (
-          self._config.response_schema
+      # The response_schema is validated/stringified in AgentConfig.
+      self._config.capabilities.finish_tool_schema_json = cast(
+          str, self._config.response_schema
       )
     self._strategy = None
     self._conversation = None
