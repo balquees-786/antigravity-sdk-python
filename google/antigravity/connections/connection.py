@@ -25,8 +25,13 @@ backend type and how to tear it down.
 import abc
 import json
 from typing import Any, AsyncIterator, Callable, Mapping, Sequence
+
 import pydantic
+
 from google.antigravity import types
+from google.antigravity.hooks import hooks as hooks_mod
+from google.antigravity.hooks import policy
+from google.antigravity.triggers import triggers as triggers_mod
 
 
 class AgentConfig(abc.ABC, pydantic.BaseModel):
@@ -46,9 +51,9 @@ class AgentConfig(abc.ABC, pydantic.BaseModel):
       )
   )
   tools: list[Callable[..., Any]] = pydantic.Field(default_factory=list)
-  policies: list[Any] = pydantic.Field(default_factory=list)
-  hooks: list[Any] = pydantic.Field(default_factory=list)
-  triggers: list[Any] = pydantic.Field(default_factory=list)
+  policies: list[policy.Policy] = pydantic.Field(default_factory=list)
+  hooks: list[hooks_mod.Hook] = pydantic.Field(default_factory=list)
+  triggers: list[triggers_mod.Trigger] = pydantic.Field(default_factory=list)
   mcp_servers: list[types.McpServerConfig] = pydantic.Field(
       default_factory=list
   )
@@ -77,6 +82,29 @@ class AgentConfig(abc.ABC, pydantic.BaseModel):
         f"Unsupported response_schema format: {type(v).__name__}. "
         "Expected a JSON string, dict, or pydantic.BaseModel subclass."
     )
+
+  @pydantic.field_validator("policies", mode="before")
+  @classmethod
+  def _validate_policies(cls, v):  # pylint: disable=no-self-argument
+    if v is None:
+      return []
+    if not isinstance(v, (list, tuple, Sequence)) or isinstance(
+        v, (str, bytes)
+    ):
+      v = [v]
+    flat_policies = []
+
+    def flatten(item):
+      if isinstance(item, (list, tuple, Sequence)) and not isinstance(
+          item, (str, bytes)
+      ):
+        for sub_item in item:
+          flatten(sub_item)
+      else:
+        flat_policies.append(item)
+
+    flatten(v)
+    return flat_policies
 
   def model_copy(
       self, *, update: Mapping[str, Any] | None = None, deep: bool = False

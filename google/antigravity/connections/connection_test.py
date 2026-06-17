@@ -16,6 +16,8 @@
 
 import unittest
 from google.antigravity.connections import connection
+from google.antigravity.hooks import hooks as hooks_mod
+from google.antigravity.hooks import policy
 
 
 class DummyConnection(connection.Connection):
@@ -96,6 +98,26 @@ class AgentConfigTest(unittest.TestCase):
     with self.assertRaises(ValueError):
       ConcreteConfig(response_schema=42)
 
+  def test_policies_validation(self):
+    class ConcreteConfig(connection.AgentConfig):
+
+      def create_strategy(self, *, tool_runner, hook_runner):
+        return None
+
+    my_policy = policy.Policy(tool="test", decision=policy.Decision.APPROVE)
+
+    # Test policies=None (should default to empty list)
+    config_none = ConcreteConfig(policies=None)
+    self.assertEqual(config_none.policies, [])
+
+    # Test policies as a single object (should be wrapped in a list)
+    config_single = ConcreteConfig(policies=my_policy)
+    self.assertEqual(config_single.policies, [my_policy])
+
+    # Test policies as a nested list (should be flattened)
+    config_nested = ConcreteConfig(policies=[my_policy, [my_policy]])
+    self.assertEqual(config_nested.policies, [my_policy, my_policy])
+
   def test_model_copy_deep_preserves_executable_references(self):
     class ConcreteConfig(connection.AgentConfig):
 
@@ -105,9 +127,17 @@ class AgentConfigTest(unittest.TestCase):
     def my_tool():
       pass
 
-    my_hook = object()
-    my_trigger = object()
-    my_policy = object()
+    class DummyHook(hooks_mod.InspectHook):
+
+      async def run(self, context, data):
+        pass
+
+    my_hook = DummyHook()
+
+    async def my_trigger(_):
+      pass
+
+    my_policy = policy.Policy(tool="test", decision=policy.Decision.APPROVE)
 
     config = ConcreteConfig(
         tools=[my_tool],

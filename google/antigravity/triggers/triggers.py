@@ -19,13 +19,19 @@ session. It reacts to external events (cron, file changes, webhooks)
 and pushes messages back into the agent.
 """
 
+from __future__ import annotations
+
 import enum
 import inspect
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, Protocol
 
 import pydantic
 
-from google.antigravity.connections import connection as connection_module
+
+class TriggerConnection(Protocol):
+
+  async def send_trigger_notification(self, content: str) -> None:
+    ...
 
 
 class TriggerContext:
@@ -37,7 +43,7 @@ class TriggerContext:
 
   def __init__(
       self,
-      connection: connection_module.Connection,
+      connection: TriggerConnection,
   ) -> None:
     self._connection = connection
 

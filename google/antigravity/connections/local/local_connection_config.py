@@ -18,15 +18,17 @@ import logging
 import os
 import pathlib
 import tempfile
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 
 import pydantic
 
 from google.antigravity import types
 from google.antigravity.connections import connection
+from google.antigravity.hooks import hooks as hooks_mod
 from google.antigravity.hooks import policy
 from google.antigravity.models import DEFAULT_IMAGE_GENERATION_MODEL
 from google.antigravity.models import DEFAULT_MODEL
+from google.antigravity.triggers import triggers as triggers_mod
 
 DEFAULT_APP_DATA_DIR = (
     (pathlib.Path("~") / ".gemini" / "antigravity").expanduser().resolve()
@@ -54,7 +56,7 @@ class LocalAgentConfig(connection.AgentConfig):
   capabilities: types.CapabilitiesConfig = pydantic.Field(
       default_factory=types.CapabilitiesConfig
   )
-  policies: list[Any] = pydantic.Field(
+  policies: list[policy.Policy] = pydantic.Field(
       default_factory=policy.confirm_run_command
   )
   workspaces: list[str] = pydantic.Field(default_factory=lambda: [os.getcwd()])
@@ -73,9 +75,9 @@ class LocalAgentConfig(connection.AgentConfig):
       system_instructions: str | types.SystemInstructions | None = None,
       capabilities: types.CapabilitiesConfig | None = None,
       tools: list[Callable[..., Any]] | None = None,
-      policies: list[Any] | None = None,
-      hooks: list[Any] | None = None,
-      triggers: list[Any] | None = None,
+      policies: Sequence[policy.Policy | Sequence[policy.Policy]] | None = None,
+      hooks: list[hooks_mod.Hook] | None = None,
+      triggers: list[triggers_mod.Trigger] | None = None,
       mcp_servers: list[types.McpServerConfig] | None = None,
       workspaces: list[str] | None = None,
       conversation_id: str | None = None,
